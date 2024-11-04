@@ -1,0 +1,39 @@
+Room Name: Forgotten Shrine
+Room Code: FS
+Room Description: A musty air fills this small chamber. In the center stands a crumbling altar, long abandoned by the gods it once served. Faint, flickering light dances from faded stained glass windows above. Strange symbols carved into the walls pulse with dim, forgotten magic, while the silence is broken only by the distant drip of water.
+
+Room Name: The Serpentâ€™s Hall
+Room Code: SH
+Room Description: This narrow hall twists and winds like a snake. Torches flicker on the walls, casting long shadows over the stone carvings of serpents that line the passage. The floor is smooth but uneven, and the hiss of something unseen echoes ahead. The smell of damp earth and stone fills the air.
+
+Room Name: Arcane Study
+Room Code: AS
+Room Description: Shelves of old books line the walls, many coated with layers of dust. An ornate, cracked desk sits in the center, papers and scrolls scattered across it as if abandoned in haste. The faint smell of parchment and candle wax lingers, and the air hums with a lingering magical aura. A fireplace smolders dimly in one corner, casting flickering shadows.
+
+Room Name: The Iron Vault
+Room Code: IV
+Room Description: Massive iron doors guard this room, cold to the touch. Inside, rows of old, rusted chests and locked containers are scattered about. Some have been smashed open, while others remain untouched, waiting to be discovered. The stone floor bears the scrape marks of heavy objects once dragged across it, and the faint scent of metal and decay hangs in the air.
+
+Room Name: Hall of Mirrors
+Room Code: HM
+Room Description: This grand hall is lined with tall, ornate mirrors, each one reflecting the dim light of the torches that burn from the walls. The air is cold and unnerving as each reflection seems to shift unnaturally when the players aren't looking. The distant sound of footsteps echoes through the space, though itâ€™s hard to tell if they belong to someone else or themselves.
+
+Room Name: Spider's Den
+Room Code: SD
+Room Description: Thick webs cover the walls and ceiling of this room, giving it a claustrophobic feel. The air is thick with the smell of decay, and in the corners of the room, cocooned bodies twitch faintly. The floor is sticky underfoot, and the soft rustling of legs can be heard from above. At the far end, a giant nest sits, dark and foreboding.
+
+Room Name: The Blood Pool
+Room Code: BP
+Room Description: At the center of this cold stone chamber lies a large pool filled with dark red liquid. The surface ripples as if disturbed, but nothing can be seen. Strange markings, written in a language long forgotten, circle the poolâ€™s edge, glowing faintly. The air is heavy, and the room is silent except for the occasional drip of liquid into the pool.
+
+Room Name: The Hidden Armory
+Room Code: HA
+Room Description: Weapons and armor of various shapes and sizes line the walls of this hidden room. Dust covers the metal, but the craftsmanship of each item remains impeccable. In the center, a large, stone table holds a map carved directly into its surface. The weapons seem undisturbed, yet thereâ€™s a sense of recent presence, like someone was here not long ago.
+
+Room Name: Cursed Tomb
+Room Code: CT
+Room Description: This tomb is filled with the smell of rotting earth. Stone sarcophagi line the walls, each one adorned with carvings of long-dead figures. The air is unnervingly still, and a cold chill lingers despite the lack of wind. A faint green light glows from one of the tombs, and whispers seem to fill the air, though no one can be seen.
+
+Room Name: The Trial Chamber
+Room Code: TC
+Room Description: The walls of this large chamber are lined with stone statues, each one depicting a figure in a moment of judgment or trial. The ceiling is high, with cracks letting in dim beams of light from above. In the center, a large circular platform sits, engraved with symbols of power and fate. The air here is tense, as if the room itself awaits a test to be faced.
