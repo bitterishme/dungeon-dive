@@ -1,17 +1,22 @@
-#ifndef ROOM_MANIP_H
-#define ROOM_MANIP_H
+typedef struct Room Room;
 
-typedef struct Room {
-    char* name;
-    char* code;
-    char* description;
-    struct Room *north;
-    struct Room *east;
-    struct Room *south;
-    struct Room *west;
-} Room;
+struct Room {
+    char name[256];
+    char code[20];
+    char description[1024];
+    Room *north;
+    Room *east;
+    Room *south;
+    Room *west;
+};
 
-Room* roomCreate(Room* original);
-Room** readRoomFile(const char* filename, int* roomCount);
+Room* roomCreate(Room *room);
+Room* readRoomFile(char *filename, int *size);
+// New function to get available exits
+void getAvailableExits(Room *room, char *buffer);
+// New function to create 2D dungeon
+Room** create2DDungeon(Room *roomArray, int arraySize, int dungeonSize);
+// New function to free 2D dungeon
+void delete2DDungeon(Room **dungeon, int size);
 
 #endif
