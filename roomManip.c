@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "roomManip.h"
 #include "stringManip.h"
 
@@ -86,7 +87,108 @@ Room** readRoomFile(const char* filename, int* roomCount) {
             }
         }
     }
+    void getAvailableExits(Room *room, char *buffer) {
+    buffer[0] = '\0';
+    if (room->north) strcat(buffer, "N ");
+    if (room->east) strcat(buffer, "E ");
+    if (room->south) strcat(buffer, "S ");
+    if (room->west) strcat(buffer, "W ");
+}
+
+RoomNode* createDungeonGrid(RoomNode *roomArray, int arraySize, int gridSize) {
+    if (arraySize == 0 || gridSize == 0) return NULL;
     
-    fclose(file);
-    return rooms;
+    srand(time(NULL));
+    
+    // Create first row, left to right
+    RoomNode *head = roomCreate(&roomArray[rand() % arraySize]);
+    RoomNode *currentRow = head;
+    RoomNode *prevRow = NULL;
+    
+    for (int row = 0; row < gridSize; row++) {
+        RoomNode *rowStart = currentRow;
+        
+        // Create nodes in this row
+        for (int col = 1; col < gridSize; col++) {
+            RoomNode *newNode = roomCreate(&roomArray[rand() % arraySize]);
+            
+            // Link east-west
+            currentRow->east = newNode;
+            newNode->west = currentRow;
+            
+            // Link north-south with previous row if it exists
+            if (prevRow != NULL) {
+                RoomNode *nodeAbove = prevRow;
+                for (int i = 0; i < col; i++) {
+                    nodeAbove = nodeAbove->east;
+                }
+                nodeAbove->south = newNode;
+                newNode->north = nodeAbove;
+            }
+            
+            currentRow = newNode;
+        }
+        
+        // If not last row, create start of next row
+        if (row < gridSize - 1) {
+            prevRow = rowStart;
+            
+            // Create first node of next row
+            RoomNode *nextRowStart = roomCreate(&roomArray[rand() % arraySize]);
+            
+            rowStart->south = nextRowStart;
+            nextRowStart->north = rowStart;
+            currentRow = nextRowStart;
+        }
+    }
+    
+    return head;
+}
+
+RoomNode* findNode(RoomNode *head, int row, int col, int size) {
+    if (!head || row < 0 || col < 0 || row >= size || col >= size) {
+        return NULL;
+    }
+    
+    // Move to correct row
+    RoomNode *current = head;
+    for (int i = 0; i < row; i++) {
+        current = current->south;
+        if (!current) return NULL;
+    }
+    
+    // Move to correct column
+    for (int i = 0; i < col; i++) {
+        current = current->east;
+        if (!current) return NULL;
+    }
+    
+    return current;
+}
+
+void deleteDungeonGrid(RoomNode *head, int size) {
+    if (!head) return;
+    
+    RoomNode *currentRow = head;
+    
+    while (currentRow) {
+        RoomNode *rowStart = currentRow;
+        RoomNode *nextRow = currentRow->south;
+        
+        while (rowStart) {
+            RoomNode *next = rowStart->east;
+            free(rowStart);
+            rowStart = next;
+        }
+        
+        currentRow = nextRow;
+    }
+}
+
+void getAvailableExits(RoomNode *room, char *buffer) {
+    buffer[0] = '\0';
+    if (room->north) strcat(buffer, "N ");
+    if (room->east) strcat(buffer, "E ");
+    if (room->south) strcat(buffer, "S ");
+    if (room->west) strcat(buffer, "W ");
 }

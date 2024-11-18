@@ -1,22 +1,22 @@
-typedef struct Room Room;
+typedef struct RoomNode RoomNode;
 
-struct Room {
+struct RoomNode {
     char name[256];
     char code[20];
     char description[1024];
-    Room *north;
-    Room *east;
-    Room *south;
-    Room *west;
+    RoomNode *north;
+    RoomNode *east;
+    RoomNode *south;
+    RoomNode *west;
 };
 
-Room* roomCreate(Room *room);
-Room* readRoomFile(char *filename, int *size);
-// New function to get available exits
-void getAvailableExits(Room *room, char *buffer);
-// New function to create 2D dungeon
-Room** create2DDungeon(Room *roomArray, int arraySize, int dungeonSize);
-// New function to free 2D dungeon
-void delete2DDungeon(Room **dungeon, int size);
+RoomNode* roomCreate(RoomNode *room);
+RoomNode* readRoomFile(char *filename, int *size);
+void getAvailableExits(RoomNode *room, char *buffer);
+// Returns the head (top-left) node of the dungeon
+RoomNode* createDungeonGrid(RoomNode *roomArray, int arraySize, int gridSize);
+void deleteDungeonGrid(RoomNode *head, int size);
+// Helper function to find a node in the grid
+RoomNode* findNode(RoomNode *head, int row, int col, int size);
 
 #endif
