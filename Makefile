@@ -1,11 +1,13 @@
 CC = gcc
-CFLAGS = -Wall -Werror
-OBJS = main.o stringManip.o roomManip.o
+CFLAGS = -Wall -g
+OBJS = main.o stringManip.o roomManip.o commandProc.o
 
-dungeonmaster: $(OBJS)
-	$(CC) $(OBJS) -o dungeonmaster
+all: dungeon-dive
 
-main.o: main.c roomManip.h
+dungeon-dive: $(OBJS)
+	$(CC) $(CFLAGS) -o dungeon-dive $(OBJS)
+
+main.o: main.c roomManip.h stringManip.h commandProc.h
 	$(CC) $(CFLAGS) -c main.c
 
 stringManip.o: stringManip.c stringManip.h
@@ -14,5 +16,8 @@ stringManip.o: stringManip.c stringManip.h
 roomManip.o: roomManip.c roomManip.h stringManip.h
 	$(CC) $(CFLAGS) -c roomManip.c
 
+commandProc.o: commandProc.c commandProc.h roomManip.h stringManip.h
+	$(CC) $(CFLAGS) -c commandProc.c
+
 clean:
-	rm -f $(OBJS) dungeonmaster
+	rm -f dungeon-dive $(OBJS)

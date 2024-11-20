@@ -1,96 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include "roomManip.h"
+#include "stringManip.h"
+#include "commandProc.h"
 
-void printDungeon(Room* start) {
-    if (!start) {
-        printf("Error: Cannot print NULL dungeon\n");
-        return;
-    }
-    Room* rowStart = start;
-    
-    while (rowStart) {
-        Room* current = rowStart;
-        while (current) {
-            printf("%s: %s\n", current->code, current->name);
-            current = current->east;
-        }
-        rowStart = rowStart->south;
-    }
-}
-
-void deleteDungeon(Room* start) {
-    if (!start) return;
-    
-    Room* rowStart = start;
-    while (rowStart) {
-        Room* current = rowStart;
-        Room* nextRow = rowStart->south;
-        
-        while (current) {
-            Room* nextInRow = current->east;
-            free(current->name);
-            free(current->code);
-            free(current->description);
-            free(current);
-            current = nextInRow;
-        }
-        rowStart = nextRow;
-    }
-}
-
-Room* createDungeon(Room** roomList, int roomCount, int size) {
-    printf("Creating dungeon with size %d and %d rooms available\n", size, roomCount);
-    if (!roomList || roomCount == 0 || size <= 0) {
-        printf("Invalid parameters for dungeon creation\n");
-        return NULL;
-    }
-    
-    srand(time(NULL));
-    Room* start = NULL;
-    Room* above = NULL;
-    
-    for (int row = 0; row < size; row++) {
-        printf("Creating row %d\n", row);
-        Room* rowStart = NULL;
-        Room* prevInRow = NULL;
-        
-        for (int col = 0; col < size; col++) {
-            int idx = rand() % roomCount;
-            printf("Using room template %d for position [%d,%d]\n", idx, row, col);
-            if (!roomList[idx]) {
-                printf("Error: NULL room template at index %d\n", idx);
-                continue;
-            }
-            Room* newRoom = roomCreate(roomList[idx]);
-            if (!newRoom) {
-                printf("Failed to create room copy at position [%d,%d]\n", row, col);
-                continue;
-            }
-            
-            if (!start) start = newRoom;
-            if (!rowStart) rowStart = newRoom;
-            
-            if (prevInRow) {
-                prevInRow->east = newRoom;
-                newRoom->west = prevInRow;
-            }
-            
-            if (above) {
-                above->south = newRoom;
-                newRoom->north = above;
-                above = above->east;
-            }
-            
-            prevInRow = newRoom;
-        }
-        
-        above = rowStart;
-    }
-    
-    return start;
-}
+#define BUFFER_SIZE 1024
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -98,57 +12,125 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    int roomCount = 0;
-    printf("Reading room file: %s\n", argv[1]);
-    Room** roomList = readRoomFile(argv[1], &roomCount);
-    if (!roomList) {
+    // Read room file
+    int size;
+    RoomNode *roomArray = readRoomFile(argv[1], &size);
+    if (roomArray == NULL) {
         printf("Error reading room file\n");
         return 1;
     }
-    printf("Successfully read %d rooms\n", roomCount);
     
-    char buffer[100];
-    printf("Enter dungeon size: ");
-    if (!fgets(buffer, sizeof(buffer), stdin)) {
-        printf("Error reading input\n");
-        return 1;
-    }
-    int dungeonSize = atoi(buffer);
+    // Get dungeon size
+    int dungeonSize;
+    char buffer[BUFFER_SIZE];
+    printf("Enter desired dungeon size: ");
+    fgets(buffer, sizeof(buffer), stdin);
+    dungeonSize = atoi(buffer);
     
     if (dungeonSize <= 0) {
         printf("Invalid dungeon size\n");
-        // Clean up roomList
-        for (int i = 0; i < roomCount; i++) {
-            if (roomList[i]) {
-                free(roomList[i]->name);
-                free(roomList[i]->code);
-                free(roomList[i]->description);
-                free(roomList[i]);
-            }
-        }
-        free(roomList);
+        free(roomArray);
         return 1;
     }
     
-    Room* dungeon = createDungeon(roomList, roomCount, dungeonSize);
-    if (!dungeon) {
-        printf("Failed to create dungeon\n");
-    } else {
-        printf("\nDungeon layout:\n");
-        printDungeon(dungeon);
-        deleteDungeon(dungeon);
+    // Create dungeon grid using linked list
+    RoomNode *dungeonHead = createDungeonGrid(roomArray, size, dungeonSize);
+    if (dungeonHead == NULL) {
+        printf("Error creating dungeon\n");
+        free(roomArray);
+        return 1;
     }
     
-    // Clean up roomList
-    for (int i = 0; i < roomCount; i++) {
-        if (roomList[i]) {
-            free(roomList[i]->name);
-            free(roomList[i]->code);
-            free(roomList[i]->description);
-            free(roomList[i]);
+    // Start game loop
+    RoomNode *currentRoom = dungeonHead;
+    int gameRunning = 1;
+    
+    printf("\nWelcome to the Dungeon!\n");
+    printf("Commands: move [n/e/s/w], look, quit\n\n");
+    
+    // Initial room description
+    printf("You are in %s\n", currentRoom->name);
+    printf("%s\n", currentRoom->description);
+    char exits[100];
+    getAvailableExits(currentRoom, exits);
+    printf("Exits: %s\n", exits);
+    
+    while (gameRunning) {
+        printf("\nWhat would you like to do? ");
+        fgets(buffer, sizeof(buffer), stdin);
+        
+        Command cmd = parseCommand(buffer);
+        switch(cmd.type) {
+            case CMD_MOVE:
+                switch(cmd.argument[0]) {
+                    case 'n':
+                    case 'N':
+                        if (currentRoom->north) {
+                            currentRoom = currentRoom->north;
+                            printf("Moving north...\n");
+                        } else {
+                            printf("You bump into a wall trying to go north.\n");
+                        }
+                        break;
+                    case 'e':
+                    case 'E':
+                        if (currentRoom->east) {
+                            currentRoom = currentRoom->east;
+                            printf("Moving east...\n");
+                        } else {
+                            printf("You bump into a wall trying to go east.\n");
+                        }
+                        break;
+                    case 's':
+                    case 'S':
+                        if (currentRoom->south) {
+                            currentRoom = currentRoom->south;
+                            printf("Moving south...\n");
+                        } else {
+                            printf("You bump into a wall trying to go south.\n");
+                        }
+                        break;
+                    case 'w':
+                    case 'W':
+                        if (currentRoom->west) {
+                            currentRoom = currentRoom->west;
+                            printf("Moving west...\n");
+                        } else {
+                            printf("You bump into a wall trying to go west.\n");
+                        }
+                        break;
+                    default:
+                        printf("Invalid direction. Use n, e, s, or w.\n");
+                }
+                // Show new room after movement
+                printf("\nYou are in %s\n", currentRoom->name);
+                printf("%s\n", currentRoom->description);
+                getAvailableExits(currentRoom, exits);
+                printf("Exits: %s\n", exits);
+                break;
+                
+            case CMD_LOOK:
+                printf("\nRoom: %s [%s]\n", currentRoom->name, currentRoom->code);
+                printf("Description: %s\n", currentRoom->description);
+                getAvailableExits(currentRoom, exits);
+                printf("Exits: %s\n", exits);
+                break;
+                
+            case CMD_QUIT:
+                gameRunning = 0;
+                printf("Thanks for playing!\n");
+                break;
+                
+            case CMD_INVALID:
+                printf("I don't understand that command.\n");
+                printf("Available commands: move [n/e/s/w], look, quit\n");
+                break;
         }
     }
-    free(roomList);
+    
+    // Cleanup
+    deleteDungeonGrid(dungeonHead, dungeonSize);
+    free(roomArray);
     
     return 0;
 }
