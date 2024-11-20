@@ -16,23 +16,29 @@ int main(int argc, char *argv[]) {
     
     // Read rooms from file
     RoomList *roomList = readRoomFile(argv[1]);
-    if (!roomList) {
-        printf("Error reading room file\n");
+    if (!roomList || roomList->numRooms <= 0) {
+        printf("Error reading room file or no rooms found\n");
+        if (roomList) freeRoomList(roomList);
         return 1;
     }
+    
+    printf("Successfully loaded %d rooms from file.\n", roomList->numRooms);
     
     // Get dungeon size from user
     int dungeonSize;
     char buffer[BUFFER_SIZE];
-    printf("Enter desired dungeon size: ");
-    fgets(buffer, sizeof(buffer), stdin);
-    dungeonSize = atoi(buffer);
-    
-    if (dungeonSize <= 0) {
-        printf("Invalid dungeon size\n");
-        freeRoomList(roomList);
-        return 1;
-    }
+    do {
+        printf("Enter desired dungeon size (must be positive): ");
+        if (!fgets(buffer, sizeof(buffer), stdin)) {
+            printf("Error reading input\n");
+            freeRoomList(roomList);
+            return 1;
+        }
+        dungeonSize = atoi(buffer);
+        if (dungeonSize <= 0) {
+            printf("Invalid size. Please enter a positive number.\n");
+        }
+    } while (dungeonSize <= 0);
     
     // Build the dungeon
     DungeonNode *dungeon = buildDungeon(roomList, dungeonSize);
@@ -55,7 +61,7 @@ int main(int argc, char *argv[]) {
     processCommand(lookCmd, currentRoom, &gameRunning);
     
     // Main game loop
-    while (gameRunning) {
+    while (gameRunning && currentRoom) {
         printf("\nWhat would you like to do? ");
         if (!fgets(buffer, sizeof(buffer), stdin)) {
             break;
@@ -75,8 +81,12 @@ int main(int argc, char *argv[]) {
     }
     
     // Cleanup
-    freeDungeon(dungeon, dungeonSize);
-    freeRoomList(roomList);
+    if (dungeon) {
+        freeDungeon(dungeon, dungeonSize);
+    }
+    if (roomList) {
+        freeRoomList(roomList);
+    }
     
     return 0;
 }

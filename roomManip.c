@@ -10,7 +10,10 @@
 
 RoomList* readRoomFile(char *filename) {
     FILE *fp = fopen(filename, "r");
-    if (!fp) return NULL;
+    if (!fp) {
+        printf("Could not open file %s\n", filename);
+        return NULL;
+    }
     
     RoomList *list = malloc(sizeof(RoomList));
     if (!list) {
@@ -30,15 +33,15 @@ RoomList* readRoomFile(char *filename) {
     
     char buffer[BUFFER_SIZE];
     Room currentRoom = {0};
-    char descBuffer[1024] = {0};
     int isReadingDesc = 0;
     
     while (fgets(buffer, sizeof(buffer), fp)) {
         char *line = str_trim(buffer);
         
-        if (strncmp(line, "ROOM", 4) == 0) {
-            // Save previous room if exists
-            if (strlen(currentRoom.code) > 0) {
+        // Skip empty lines
+        if (strlen(line) == 0) {
+            if (isReadingDesc && strlen(currentRoom.name) > 0) {
+                // End of a room description
                 if (list->numRooms >= capacity) {
                     capacity *= 2;
                     Room *temp = realloc(list->rooms, sizeof(Room) * capacity);
@@ -50,33 +53,38 @@ RoomList* readRoomFile(char *filename) {
                     list->rooms = temp;
                 }
                 list->rooms[list->numRooms++] = currentRoom;
+                memset(&currentRoom, 0, sizeof(Room));
+                isReadingDesc = 0;
             }
-            
-            // Start new room
-            memset(&currentRoom, 0, sizeof(Room));
-            strcpy(currentRoom.code, str_trim(line + 5));
-            isReadingDesc = 0;
-            memset(descBuffer, 0, sizeof(descBuffer));
+            continue;
         }
-        else if (strncmp(line, "NAME", 4) == 0) {
-            strcpy(currentRoom.name, str_trim(line + 5));
+        
+        if (strncmp(line, "Room Name:", 10) == 0) {
+            strcpy(currentRoom.name, str_trim(line + 10));
         }
-        else if (strncmp(line, "DESC", 4) == 0) {
+        else if (strncmp(line, "Room Code:", 10) == 0) {
+            strcpy(currentRoom.code, str_trim(line + 10));
+        }
+        else if (strncmp(line, "Room Description:", 16) == 0) {
             isReadingDesc = 1;
+            currentRoom.description[0] = '\0';
+            // Get the rest of this line if there is any
+            char *descStart = str_trim(line + 16);
+            if (strlen(descStart) > 0) {
+                strcpy(currentRoom.description, descStart);
+            }
         }
         else if (isReadingDesc) {
-            if (strncmp(line, "ENDROOM", 7) == 0) {
-                strcpy(currentRoom.description, descBuffer);
-                isReadingDesc = 0;
-            } else {
-                if (strlen(descBuffer) > 0) strcat(descBuffer, "\n");
-                strcat(descBuffer, line);
+            // If we already have some description, add a space
+            if (strlen(currentRoom.description) > 0) {
+                strcat(currentRoom.description, " ");
             }
+            strcat(currentRoom.description, line);
         }
     }
     
     // Save last room if exists
-    if (strlen(currentRoom.code) > 0) {
+    if (strlen(currentRoom.name) > 0) {
         if (list->numRooms >= capacity) {
             capacity *= 2;
             Room *temp = realloc(list->rooms, sizeof(Room) * capacity);
@@ -91,6 +99,13 @@ RoomList* readRoomFile(char *filename) {
     }
     
     fclose(fp);
+    
+    // Debug output
+    printf("Loaded %d rooms:\n", list->numRooms);
+    for (int i = 0; i < list->numRooms; i++) {
+        printf("%d. [%s] %s\n", i+1, list->rooms[i].code, list->rooms[i].name);
+    }
+    
     return list;
 }
 
@@ -115,20 +130,51 @@ DungeonNode* createDungeonNode(Room *room) {
 }
 
 DungeonNode* buildDungeon(RoomList *roomList, int size) {
-    if (!roomList || size <= 0) return NULL;
+    // Add validation
+    if (!roomList || size <= 0 || roomList->numRooms <= 0) {
+        printf("Invalid parameters for dungeon creation\n");
+        return NULL;
+    }
     
     srand(time(NULL));
     
     // Create 2D array to store pointers to nodes temporarily
     DungeonNode ***grid = malloc(sizeof(DungeonNode**) * size);
+    if (!grid) {
+        printf("Memory allocation failed for grid\n");
+        return NULL;
+    }
+    
     for (int i = 0; i < size; i++) {
         grid[i] = malloc(sizeof(DungeonNode*) * size);
+        if (!grid[i]) {
+            // Clean up previously allocated memory
+            for (int j = 0; j < i; j++) {
+                free(grid[j]);
+            }
+            free(grid);
+            printf("Memory allocation failed for grid row\n");
+            return NULL;
+        }
     }
     
     // Create all nodes
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
-            Room *randomRoom = &roomList->rooms[rand() % roomList->numRooms];
+            // Ensure we have rooms to select from
+            if (roomList->numRooms <= 0) {
+                printf("No rooms available in room list\n");
+                // Clean up
+                for (int x = 0; x < size; x++) {
+                    free(grid[x]);
+                }
+                free(grid);
+                return NULL;
+            }
+            
+            int randomIndex = rand() % roomList->numRooms;
+            Room *randomRoom = &roomList->rooms[randomIndex];
+            
             grid[i][j] = createDungeonNode(randomRoom);
             if (!grid[i][j]) {
                 // Cleanup on failure
@@ -141,6 +187,7 @@ DungeonNode* buildDungeon(RoomList *roomList, int size) {
                     free(grid[x]);
                 }
                 free(grid);
+                printf("Failed to create dungeon node\n");
                 return NULL;
             }
         }
