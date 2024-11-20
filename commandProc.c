@@ -25,47 +25,56 @@ Command parseCommand(char *input) {
     return cmd;
 }
 
-Room* processCommand(Command cmd, Room *currentRoom, int *gameRunning) {
+DungeonNode* processCommand(Command cmd, DungeonNode *currentRoom, int *gameRunning) {
+    char exits[100];
+    
     switch(cmd.type) {
         case CMD_MOVE:
             switch(cmd.argument[0]) {
                 case 'n':
                 case 'N':
                     if (currentRoom->north) {
+                        printf("Moving north...\n");
                         return currentRoom->north;
                     }
                     printf("You bump into a wall trying to go north.\n");
                     break;
+                    
                 case 'e':
                 case 'E':
                     if (currentRoom->east) {
+                        printf("Moving east...\n");
                         return currentRoom->east;
                     }
                     printf("You bump into a wall trying to go east.\n");
                     break;
+                    
                 case 's':
                 case 'S':
                     if (currentRoom->south) {
+                        printf("Moving south...\n");
                         return currentRoom->south;
                     }
                     printf("You bump into a wall trying to go south.\n");
                     break;
+                    
                 case 'w':
                 case 'W':
                     if (currentRoom->west) {
+                        printf("Moving west...\n");
                         return currentRoom->west;
                     }
                     printf("You bump into a wall trying to go west.\n");
                     break;
+                    
                 default:
                     printf("Invalid direction. Use n, e, s, or w.\n");
             }
             break;
             
         case CMD_LOOK:
-            printf("\nRoom: %s [%s]\n", currentRoom->name, currentRoom->code);
-            printf("Description: %s\n", currentRoom->description);
-            char exits[100];
+            printf("\nRoom: %s [%s]\n", currentRoom->room.name, currentRoom->room.code);
+            printf("Description: %s\n", currentRoom->room.description);
             getAvailableExits(currentRoom, exits);
             printf("Exits: %s\n", exits);
             break;

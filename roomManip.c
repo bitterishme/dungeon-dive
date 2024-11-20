@@ -5,190 +5,240 @@
 #include "roomManip.h"
 #include "stringManip.h"
 
-#define INITIAL_CAPACITY 10
-#define MAX_LINE_LENGTH 1000
+#define BUFFER_SIZE 2048
+#define INITIAL_ROOM_CAPACITY 10
 
-Room* roomCreate(Room* original) {
-    if (!original) return NULL;
+RoomList* readRoomFile(char *filename) {
+    FILE *fp = fopen(filename, "r");
+    if (!fp) return NULL;
     
-    Room* newRoom = malloc(sizeof(Room));
-    if (!newRoom) return NULL;
-    
-    newRoom->name = strdup(original->name);
-    newRoom->code = strdup(original->code);
-    newRoom->description = strdup(original->description);
-    newRoom->north = NULL;
-    newRoom->east = NULL;
-    newRoom->south = NULL;
-    newRoom->west = NULL;
-    
-    if (!newRoom->name || !newRoom->code || !newRoom->description) {
-        free(newRoom->name);
-        free(newRoom->code);
-        free(newRoom->description);
-        free(newRoom);
+    RoomList *list = malloc(sizeof(RoomList));
+    if (!list) {
+        fclose(fp);
         return NULL;
     }
     
-    return newRoom;
-}
-
-Room** readRoomFile(const char* filename, int* roomCount) {
-    FILE* file = fopen(filename, "r");
-    if (!file) return NULL;
+    // Initialize room array
+    list->numRooms = 0;
+    int capacity = INITIAL_ROOM_CAPACITY;
+    list->rooms = malloc(sizeof(Room) * capacity);
+    if (!list->rooms) {
+        free(list);
+        fclose(fp);
+        return NULL;
+    }
     
-    Room** rooms = NULL;
-    int capacity = 0;
-    *roomCount = 0;
-    char line[MAX_LINE_LENGTH];
+    char buffer[BUFFER_SIZE];
+    Room currentRoom = {0};
+    char descBuffer[1024] = {0};
+    int isReadingDesc = 0;
     
-    while (fgets(line, sizeof(line), file)) {
-        char* colon = strchr(line, ':');
-        if (!colon) continue;
+    while (fgets(buffer, sizeof(buffer), fp)) {
+        char *line = str_trim(buffer);
         
-        *colon = '\0';
-        char* key = str_trim(line);
-        char* value = str_trim(colon + 1);
-        
-        if (!key || !value) continue;
-        
-        if (*roomCount >= capacity) {
-            capacity = (capacity == 0) ? INITIAL_CAPACITY : capacity * 2;
-            Room** temp = realloc(rooms, capacity * sizeof(Room*));
-            if (!temp) {
-                // Handle memory allocation failure
-                fclose(file);
-                return rooms;
-            }
-            rooms = temp;
-            if (*roomCount == 0) {
-                rooms[0] = malloc(sizeof(Room));
-                if (!rooms[0]) {
-                    fclose(file);
-                    free(rooms);
-                    return NULL;
+        if (strncmp(line, "ROOM", 4) == 0) {
+            // Save previous room if exists
+            if (strlen(currentRoom.code) > 0) {
+                if (list->numRooms >= capacity) {
+                    capacity *= 2;
+                    Room *temp = realloc(list->rooms, sizeof(Room) * capacity);
+                    if (!temp) {
+                        freeRoomList(list);
+                        fclose(fp);
+                        return NULL;
+                    }
+                    list->rooms = temp;
                 }
-                memset(rooms[0], 0, sizeof(Room));
+                list->rooms[list->numRooms++] = currentRoom;
             }
+            
+            // Start new room
+            memset(&currentRoom, 0, sizeof(Room));
+            strcpy(currentRoom.code, str_trim(line + 5));
+            isReadingDesc = 0;
+            memset(descBuffer, 0, sizeof(descBuffer));
         }
-        
-        if (strcmp(key, "Room Name") == 0) {
-            rooms[*roomCount]->name = strdup(value);
-        } else if (strcmp(key, "Room Code") == 0) {
-            rooms[*roomCount]->code = strdup(value);
-        } else if (strcmp(key, "Room Description") == 0) {
-            rooms[*roomCount]->description = strdup(value);
-            (*roomCount)++;
-            if (*roomCount < capacity) {
-                rooms[*roomCount] = malloc(sizeof(Room));
-                if (rooms[*roomCount]) {
-                    memset(rooms[*roomCount], 0, sizeof(Room));
-                }
+        else if (strncmp(line, "NAME", 4) == 0) {
+            strcpy(currentRoom.name, str_trim(line + 5));
+        }
+        else if (strncmp(line, "DESC", 4) == 0) {
+            isReadingDesc = 1;
+        }
+        else if (isReadingDesc) {
+            if (strncmp(line, "ENDROOM", 7) == 0) {
+                strcpy(currentRoom.description, descBuffer);
+                isReadingDesc = 0;
+            } else {
+                if (strlen(descBuffer) > 0) strcat(descBuffer, "\n");
+                strcat(descBuffer, line);
             }
         }
     }
-    void getAvailableExits(Room *room, char *buffer) {
-    buffer[0] = '\0';
-    if (room->north) strcat(buffer, "N ");
-    if (room->east) strcat(buffer, "E ");
-    if (room->south) strcat(buffer, "S ");
-    if (room->west) strcat(buffer, "W ");
+    
+    // Save last room if exists
+    if (strlen(currentRoom.code) > 0) {
+        if (list->numRooms >= capacity) {
+            capacity *= 2;
+            Room *temp = realloc(list->rooms, sizeof(Room) * capacity);
+            if (!temp) {
+                freeRoomList(list);
+                fclose(fp);
+                return NULL;
+            }
+            list->rooms = temp;
+        }
+        list->rooms[list->numRooms++] = currentRoom;
+    }
+    
+    fclose(fp);
+    return list;
 }
 
-RoomNode* createDungeonGrid(RoomNode *roomArray, int arraySize, int gridSize) {
-    if (arraySize == 0 || gridSize == 0) return NULL;
+void freeRoomList(RoomList *list) {
+    if (list) {
+        if (list->rooms) free(list->rooms);
+        free(list);
+    }
+}
+
+DungeonNode* createDungeonNode(Room *room) {
+    DungeonNode *node = malloc(sizeof(DungeonNode));
+    if (!node) return NULL;
+    
+    node->room = *room;
+    node->north = NULL;
+    node->east = NULL;
+    node->south = NULL;
+    node->west = NULL;
+    
+    return node;
+}
+
+DungeonNode* buildDungeon(RoomList *roomList, int size) {
+    if (!roomList || size <= 0) return NULL;
     
     srand(time(NULL));
     
-    // Create first row, left to right
-    RoomNode *head = roomCreate(&roomArray[rand() % arraySize]);
-    RoomNode *currentRow = head;
-    RoomNode *prevRow = NULL;
+    // Create 2D array to store pointers to nodes temporarily
+    DungeonNode ***grid = malloc(sizeof(DungeonNode**) * size);
+    for (int i = 0; i < size; i++) {
+        grid[i] = malloc(sizeof(DungeonNode*) * size);
+    }
     
-    for (int row = 0; row < gridSize; row++) {
-        RoomNode *rowStart = currentRow;
-        
-        // Create nodes in this row
-        for (int col = 1; col < gridSize; col++) {
-            RoomNode *newNode = roomCreate(&roomArray[rand() % arraySize]);
-            
-            // Link east-west
-            currentRow->east = newNode;
-            newNode->west = currentRow;
-            
-            // Link north-south with previous row if it exists
-            if (prevRow != NULL) {
-                RoomNode *nodeAbove = prevRow;
-                for (int i = 0; i < col; i++) {
-                    nodeAbove = nodeAbove->east;
+    // Create all nodes
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            Room *randomRoom = &roomList->rooms[rand() % roomList->numRooms];
+            grid[i][j] = createDungeonNode(randomRoom);
+            if (!grid[i][j]) {
+                // Cleanup on failure
+                for (int x = 0; x <= i; x++) {
+                    for (int y = 0; y < (x == i ? j : size); y++) {
+                        free(grid[x][y]);
+                    }
                 }
-                nodeAbove->south = newNode;
-                newNode->north = nodeAbove;
+                for (int x = 0; x < size; x++) {
+                    free(grid[x]);
+                }
+                free(grid);
+                return NULL;
             }
-            
-            currentRow = newNode;
-        }
-        
-        // If not last row, create start of next row
-        if (row < gridSize - 1) {
-            prevRow = rowStart;
-            
-            // Create first node of next row
-            RoomNode *nextRowStart = roomCreate(&roomArray[rand() % arraySize]);
-            
-            rowStart->south = nextRowStart;
-            nextRowStart->north = rowStart;
-            currentRow = nextRowStart;
         }
     }
     
-    return head;
+    // Link nodes
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            // Link north
+            if (i > 0) {
+                grid[i][j]->north = grid[i-1][j];
+            }
+            // Link south
+            if (i < size-1) {
+                grid[i][j]->south = grid[i+1][j];
+            }
+            // Link west
+            if (j > 0) {
+                grid[i][j]->west = grid[i][j-1];
+            }
+            // Link east
+            if (j < size-1) {
+                grid[i][j]->east = grid[i][j+1];
+            }
+        }
+    }
+    
+    // Save start node
+    DungeonNode *start = grid[0][0];
+    
+    // Free temporary grid
+    for (int i = 0; i < size; i++) {
+        free(grid[i]);
+    }
+    free(grid);
+    
+    return start;
 }
 
-RoomNode* findNode(RoomNode *head, int row, int col, int size) {
-    if (!head || row < 0 || col < 0 || row >= size || col >= size) {
-        return NULL;
-    }
+void freeDungeon(DungeonNode *start, int size) {
+    if (!start) return;
     
-    // Move to correct row
-    RoomNode *current = head;
-    for (int i = 0; i < row; i++) {
-        current = current->south;
-        if (!current) return NULL;
-    }
+    // Create visited array
+    int visited[size][size];
+    memset(visited, 0, sizeof(visited));
     
-    // Move to correct column
-    for (int i = 0; i < col; i++) {
-        current = current->east;
-        if (!current) return NULL;
-    }
+    // Free nodes using stack-based approach to avoid recursion
+    typedef struct {
+        DungeonNode *node;
+        int row;
+        int col;
+    } StackNode;
     
-    return current;
-}
-
-void deleteDungeonGrid(RoomNode *head, int size) {
-    if (!head) return;
+    StackNode *stack = malloc(sizeof(StackNode) * size * size);
+    int stackTop = 0;
     
-    RoomNode *currentRow = head;
+    // Push start node
+    stack[stackTop].node = start;
+    stack[stackTop].row = 0;
+    stack[stackTop].col = 0;
+    stackTop++;
     
-    while (currentRow) {
-        RoomNode *rowStart = currentRow;
-        RoomNode *nextRow = currentRow->south;
+    while (stackTop > 0) {
+        // Pop node
+        stackTop--;
+        StackNode current = stack[stackTop];
         
-        while (rowStart) {
-            RoomNode *next = rowStart->east;
-            free(rowStart);
-            rowStart = next;
+        // Skip if already visited
+        if (visited[current.row][current.col]) continue;
+        
+        // Mark as visited
+        visited[current.row][current.col] = 1;
+        
+        // Push unvisited neighbors
+        if (current.node->east && current.col < size-1 && !visited[current.row][current.col+1]) {
+            stack[stackTop].node = current.node->east;
+            stack[stackTop].row = current.row;
+            stack[stackTop].col = current.col + 1;
+            stackTop++;
+        }
+        if (current.node->south && current.row < size-1 && !visited[current.row+1][current.col]) {
+            stack[stackTop].node = current.node->south;
+            stack[stackTop].row = current.row + 1;
+            stack[stackTop].col = current.col;
+            stackTop++;
         }
         
-        currentRow = nextRow;
+        // Free current node
+        free(current.node);
     }
+    
+    free(stack);
 }
 
-void getAvailableExits(RoomNode *room, char *buffer) {
+void getAvailableExits(DungeonNode *node, char *buffer) {
     buffer[0] = '\0';
-    if (room->north) strcat(buffer, "N ");
-    if (room->east) strcat(buffer, "E ");
-    if (room->south) strcat(buffer, "S ");
-    if (room->west) strcat(buffer, "W ");
+    if (node->north) strcat(buffer, "N ");
+    if (node->east) strcat(buffer, "E ");
+    if (node->south) strcat(buffer, "S ");
+    if (node->west) strcat(buffer, "W ");
 }

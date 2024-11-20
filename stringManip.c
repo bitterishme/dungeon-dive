@@ -1,32 +1,37 @@
-#include <ctype.h>
 #include <string.h>
-#include <stdlib.h>
+#include <ctype.h>
 #include "stringManip.h"
 
-char* str_trim(char* str) {
-    char *s = str;
-    while(*s && isspace(*s)) s++;
+char *str_trim(char *s) {
+    // Skip leading whitespace
+    while(isspace(*s)) s++;
     
-    if (*s == 0) return s;  // Handle empty string
+    // If string is empty, return it
+    if (*s == 0) return s;
     
+    // Find end of string
     char *end = s + strlen(s) - 1;
+    
+    // Trim trailing whitespace
     while(end > s && isspace(*end)) end--;
-    *(end + 1) = '\0';
+    
+    // Null terminate the string
+    *(end + 1) = 0;
     
     return s;
 }
 
-char* str_cut(char* str, int start, int end) {
-    if (!str || start < 0 || end < start || end >= strlen(str)) {
+char *str_cut(char *s, int start, int end) {
+    // Check if indices are valid
+    if (start < 0 || end < start || end >= strlen(s)) {
         return NULL;
     }
     
-    int len = end - start + 1;
-    char* result = malloc(len + 1);
-    if (!result) return NULL;
+    // Move to start position
+    s += start;
     
-    strncpy(result, str + start, len);
-    result[len] = '\0';
+    // Null terminate at end position
+    s[end - start + 1] = '\0';
     
-    return result;
+    return s;
 }

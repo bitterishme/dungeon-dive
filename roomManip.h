@@ -1,22 +1,38 @@
-typedef struct RoomNode RoomNode;
+#ifndef ROOM_MANIP_H
+#define ROOM_MANIP_H
 
-struct RoomNode {
+// Forward declare the Room struct
+typedef struct Room Room;
+
+// Structure for room in file
+struct Room {
     char name[256];
     char code[20];
     char description[1024];
-    RoomNode *north;
-    RoomNode *east;
-    RoomNode *south;
-    RoomNode *west;
 };
 
-RoomNode* roomCreate(RoomNode *room);
-RoomNode* readRoomFile(char *filename, int *size);
-void getAvailableExits(RoomNode *room, char *buffer);
-// Returns the head (top-left) node of the dungeon
-RoomNode* createDungeonGrid(RoomNode *roomArray, int arraySize, int gridSize);
-void deleteDungeonGrid(RoomNode *head, int size);
-// Helper function to find a node in the grid
-RoomNode* findNode(RoomNode *head, int row, int col, int size);
+// Forward declare the DungeonNode struct
+typedef struct DungeonNode DungeonNode;
+
+// Structure for node in dungeon
+struct DungeonNode {
+    Room room;                // Room data
+    DungeonNode *north;      // Pointer to north room
+    DungeonNode *east;       // Pointer to east room
+    DungeonNode *south;      // Pointer to south room
+    DungeonNode *west;       // Pointer to west room
+};
+
+typedef struct {
+    Room *rooms;         // Array of rooms from file
+    int numRooms;        // Number of rooms in array
+} RoomList;
+
+RoomList* readRoomFile(char *filename);
+void freeRoomList(RoomList *list);
+DungeonNode* createDungeonNode(Room *room);
+DungeonNode* buildDungeon(RoomList *roomList, int size);
+void freeDungeon(DungeonNode *start, int size);
+void getAvailableExits(DungeonNode *node, char *buffer);
 
 #endif

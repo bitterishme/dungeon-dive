@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "roomManip.h"
 #include "stringManip.h"
 #include "commandProc.h"
@@ -7,20 +8,20 @@
 #define BUFFER_SIZE 1024
 
 int main(int argc, char *argv[]) {
+    // Check command line arguments
     if (argc != 2) {
         printf("Usage: %s <room_file>\n", argv[0]);
         return 1;
     }
     
-    // Read room file
-    int size;
-    RoomNode *roomArray = readRoomFile(argv[1], &size);
-    if (roomArray == NULL) {
+    // Read rooms from file
+    RoomList *roomList = readRoomFile(argv[1]);
+    if (!roomList) {
         printf("Error reading room file\n");
         return 1;
     }
     
-    // Get dungeon size
+    // Get dungeon size from user
     int dungeonSize;
     char buffer[BUFFER_SIZE];
     printf("Enter desired dungeon size: ");
@@ -29,108 +30,53 @@ int main(int argc, char *argv[]) {
     
     if (dungeonSize <= 0) {
         printf("Invalid dungeon size\n");
-        free(roomArray);
+        freeRoomList(roomList);
         return 1;
     }
     
-    // Create dungeon grid using linked list
-    RoomNode *dungeonHead = createDungeonGrid(roomArray, size, dungeonSize);
-    if (dungeonHead == NULL) {
+    // Build the dungeon
+    DungeonNode *dungeon = buildDungeon(roomList, dungeonSize);
+    if (!dungeon) {
         printf("Error creating dungeon\n");
-        free(roomArray);
+        freeRoomList(roomList);
         return 1;
     }
     
     // Start game loop
-    RoomNode *currentRoom = dungeonHead;
+    DungeonNode *currentRoom = dungeon;
     int gameRunning = 1;
     
+    // Welcome message and initial room description
     printf("\nWelcome to the Dungeon!\n");
-    printf("Commands: move [n/e/s/w], look, quit\n\n");
+    printf("Available commands: move [n/e/s/w], look, quit\n\n");
     
-    // Initial room description
-    printf("You are in %s\n", currentRoom->name);
-    printf("%s\n", currentRoom->description);
-    char exits[100];
-    getAvailableExits(currentRoom, exits);
-    printf("Exits: %s\n", exits);
+    // Show initial room
+    Command lookCmd = {CMD_LOOK, ""};
+    processCommand(lookCmd, currentRoom, &gameRunning);
     
+    // Main game loop
     while (gameRunning) {
         printf("\nWhat would you like to do? ");
-        fgets(buffer, sizeof(buffer), stdin);
+        if (!fgets(buffer, sizeof(buffer), stdin)) {
+            break;
+        }
         
         Command cmd = parseCommand(buffer);
-        switch(cmd.type) {
-            case CMD_MOVE:
-                switch(cmd.argument[0]) {
-                    case 'n':
-                    case 'N':
-                        if (currentRoom->north) {
-                            currentRoom = currentRoom->north;
-                            printf("Moving north...\n");
-                        } else {
-                            printf("You bump into a wall trying to go north.\n");
-                        }
-                        break;
-                    case 'e':
-                    case 'E':
-                        if (currentRoom->east) {
-                            currentRoom = currentRoom->east;
-                            printf("Moving east...\n");
-                        } else {
-                            printf("You bump into a wall trying to go east.\n");
-                        }
-                        break;
-                    case 's':
-                    case 'S':
-                        if (currentRoom->south) {
-                            currentRoom = currentRoom->south;
-                            printf("Moving south...\n");
-                        } else {
-                            printf("You bump into a wall trying to go south.\n");
-                        }
-                        break;
-                    case 'w':
-                    case 'W':
-                        if (currentRoom->west) {
-                            currentRoom = currentRoom->west;
-                            printf("Moving west...\n");
-                        } else {
-                            printf("You bump into a wall trying to go west.\n");
-                        }
-                        break;
-                    default:
-                        printf("Invalid direction. Use n, e, s, or w.\n");
-                }
-                // Show new room after movement
-                printf("\nYou are in %s\n", currentRoom->name);
-                printf("%s\n", currentRoom->description);
-                getAvailableExits(currentRoom, exits);
-                printf("Exits: %s\n", exits);
-                break;
-                
-            case CMD_LOOK:
-                printf("\nRoom: %s [%s]\n", currentRoom->name, currentRoom->code);
-                printf("Description: %s\n", currentRoom->description);
-                getAvailableExits(currentRoom, exits);
-                printf("Exits: %s\n", exits);
-                break;
-                
-            case CMD_QUIT:
-                gameRunning = 0;
-                printf("Thanks for playing!\n");
-                break;
-                
-            case CMD_INVALID:
-                printf("I don't understand that command.\n");
-                printf("Available commands: move [n/e/s/w], look, quit\n");
-                break;
+        currentRoom = processCommand(cmd, currentRoom, &gameRunning);
+        
+        // Show room description after each move
+        if (cmd.type == CMD_MOVE && currentRoom && gameRunning) {
+            char exits[100];
+            printf("\nYou are in %s\n", currentRoom->room.name);
+            printf("%s\n", currentRoom->room.description);
+            getAvailableExits(currentRoom, exits);
+            printf("Exits: %s\n", exits);
         }
     }
     
     // Cleanup
-    deleteDungeonGrid(dungeonHead, dungeonSize);
-    free(roomArray);
+    freeDungeon(dungeon, dungeonSize);
+    freeRoomList(roomList);
     
     return 0;
 }

@@ -16,6 +16,6 @@ typedef struct {
 } Command;
 
 Command parseCommand(char *input);
-Room* processCommand(Command cmd, Room *currentRoom, int *gameRunning);
+DungeonNode* processCommand(Command cmd, DungeonNode *currentRoom, int *gameRunning);
 
 #endif
